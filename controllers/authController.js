@@ -128,3 +128,142 @@ exports.login = async (req, res) => {
 exports.logout = async (req, res) => {
   return res.status(200).json({ message: 'Logged out successfully.' });
 };
+
+// GET /api/auth/profile
+// Returns the Dairy Operator's own account plus the Organization record.
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const organization = await Organization.findOne({ _id: user.organizationId });
+    if (!organization) {
+      return res.status(404).json({ message: 'Organization not found.' });
+    }
+
+    return res.status(200).json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        organizationId: user.organizationId
+      },
+      organization: {
+        dairyName: organization.dairyName,
+        ownerName: organization.ownerName,
+        email: organization.email,
+        phone: organization.phone,
+        address: organization.address
+      }
+    });
+  } catch (err) {
+    console.error('getProfile error:', err);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+// PUT /api/auth/profile
+// Updates the Dairy Operator's account (name, email) and the Organization
+// record (dairyName, ownerName, email, phone, address). Email stays unique.
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, email, dairyName, ownerName, phone, address } = req.body || {};
+
+    if (isBlank(name) || isBlank(email) || isBlank(dairyName) || isBlank(ownerName) || isBlank(phone) || isBlank(address)) {
+      return res.status(400).json({ message: 'All fields are required.' });
+    }
+    if (!EMAIL_REGEX.test(String(email).trim())) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const organization = await Organization.findOne({ _id: user.organizationId });
+    if (!organization) {
+      return res.status(404).json({ message: 'Organization not found.' });
+    }
+
+    // Email uniqueness across all users and organizations (excluding self).
+    const existingUser = await User.findOne({ email: normalizedEmail, _id: { $ne: user._id } });
+    if (existingUser) {
+      return res.status(400).json({ message: 'An account with this email already exists.' });
+    }
+    const existingOrganization = await Organization.findOne({ email: normalizedEmail, _id: { $ne: organization._id } });
+    if (existingOrganization) {
+      return res.status(400).json({ message: 'An account with this email already exists.' });
+    }
+
+    user.name = String(name).trim();
+    user.email = normalizedEmail;
+    await user.save();
+
+    organization.dairyName = String(dairyName).trim();
+    organization.ownerName = String(ownerName).trim();
+    organization.email = normalizedEmail;
+    organization.phone = String(phone).trim();
+    organization.address = String(address).trim();
+    await organization.save();
+
+    return res.status(200).json({
+      message: 'Profile updated successfully.',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        organizationId: user.organizationId
+      },
+      organization: {
+        dairyName: organization.dairyName,
+        ownerName: organization.ownerName,
+        email: organization.email,
+        phone: organization.phone,
+        address: organization.address
+      }
+    });
+  } catch (err) {
+    console.error('updateProfile error:', err);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+// PUT /api/auth/change-password
+// Verifies the current password (bcrypt) before accepting the new one.
+// Wrong current password returns 400 (not 401) so the client does not
+// mistake it for an expired session.
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+
+    if (isBlank(currentPassword) || isBlank(newPassword)) {
+      return res.status(400).json({ message: 'Current password and new password are required.' });
+    }
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters long.' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const isMatch = await bcrypt.compare(String(currentPassword), user.passwordHash);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Current password is incorrect.' });
+    }
+
+    user.passwordHash = await bcrypt.hash(String(newPassword), 10);
+    await user.save();
+
+    return res.status(200).json({ message: 'Password changed successfully.' });
+  } catch (err) {
+    console.error('changePassword error:', err);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
