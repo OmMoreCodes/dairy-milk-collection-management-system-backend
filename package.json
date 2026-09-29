@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "test": "node tests/run-all.js"
   },
   "keywords": [
     "dairy",
@@ -23,7 +24,7 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.5",
-    "pdfkit": "^0.15.1"
+    "pdfkit": "^0.20.2"
   },
   "overrides": {
     "exceljs": {
