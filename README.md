@@ -37,6 +37,16 @@ npm start
 
 The API runs on `http://localhost:5000`. It works with a local MongoDB or MongoDB Atlas — switching between them only requires changing `MONGODB_URI` in `.env`.
 
+## Seed demo data
+
+```bash
+npm run seed
+```
+
+Fills the database (using `MONGODB_URI` from `.env`) with one complete demo dairy: **Sai Shraddha Dairy**, owner **Om More** (login `ommore9175@gmail.com` / `ommore123`), six active farmers, a Cow 46→48 and Buffalo 66→69 rate history, and 35 days of morning/evening collections **including today** — so the dashboard, history, reports, statements and exports all show data immediately.
+
+The script replaces all existing data before seeding, and repeated runs produce the same numbers (deterministic). Skip it if you want to start with an empty database.
+
 ## Test
 
 ```bash

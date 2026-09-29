@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node tests/run-all.js"
+    "test": "node tests/run-all.js",
+    "seed": "node seed.js"
   },
   "keywords": [
     "dairy",
